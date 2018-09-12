@@ -39,7 +39,7 @@ type HTTPResponse struct {
 
 func QueryMarshall(in interface{}) url.Values {
 	encoder := schema.NewEncoder()
-	var urlValue url.Values
+	urlValue := url.Values{}
 
 	if err := encoder.Encode(in, urlValue); err != nil {
 		log.Println("marsahll error", err)
