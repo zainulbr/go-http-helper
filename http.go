@@ -53,8 +53,8 @@ func QueryUnmarshall(v interface{}, uv url.Values) error {
 }
 
 func (r *HTTPResponse) UnMarshall(data interface{}) error {
-	if r.Code >= 400 {
-		return errors.New(fmt.Sprintf("%v %s", r.Code, string(r.Body)))
+	if err := r.Error(); err != nil {
+		return err
 	}
 
 	if err := json.Unmarshal(r.Body, data); err != nil {
@@ -64,11 +64,19 @@ func (r *HTTPResponse) UnMarshall(data interface{}) error {
 	return nil
 }
 
+func (r *HTTPResponse) Error() error {
+	if r.Code >= 400 {
+		return errors.New(fmt.Sprintf("%v %s", r.Code, string(r.Body)))
+	}
+
+	return nil
+}
+
 // Creates a new file upload
-func NewBufferMultiPart(paramName, path string) (*bytes.Buffer, error) {
+func NewBufferMultiPart(url, paramName, path string) (HTTPReq, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return HTTPReq{}, err
 	}
 
 	defer file.Close()
@@ -77,17 +85,16 @@ func NewBufferMultiPart(paramName, path string) (*bytes.Buffer, error) {
 	writer := multipart.NewWriter(body)
 	part, err := writer.CreateFormFile(paramName, filepath.Base(path))
 	if err != nil {
-		return nil, err
+		return HTTPReq{}, err
 	}
 
 	_, err = io.Copy(part, file)
-
-	err = writer.Close()
 	if err != nil {
-		return nil, err
+		return HTTPReq{}, err
 	}
+	err = writer.Close()
 
-	return body, err
+	return HTTPReq{url, nil, map[string]string{"Content-Type": writer.FormDataContentType()}, body, ""}, err
 }
 
 type HTTPReq struct {
